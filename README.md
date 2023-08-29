@@ -24,6 +24,9 @@ The solution architecture is represented by this diagram:
 
 ## Prerequisites
 
+- Azure Subscription
+- Subscription access to Azure OpenAI service. Start here to [Request Access to Azure OpenAI Service](https://customervoice.microsoft.com/Pages/ResponsePage.aspx?id=v4j5cvGGr0GRqy180BHbR7en2Ais5pxKtso_Pz4b1_xUOFA5Qk1UWDRBMjg0WFhPMkIzTzhKQ1dWNyQlQCN0PWcu)
+
 ### Prerequisites for running/debugging locally
 
 - Backend (Function App, Console Apps, etc.)
@@ -51,6 +54,18 @@ To start the React web app:
 
 ### Standard Deployments
 
+#### Clone the Repo
+
+You will need the files locally when performing standard deployments. To start, clone the repo.
+
+> **Important:** Do not forget the `--recurse-submodules` parameter. This loads the `AKS-Construction` submodule that contains AKS-specific Bicep templates.
+
+```bash
+git clone --recurse-submodules https://github.com/AzureCosmosDB/ClaimsProcessing.git
+```
+
+#### Execute PowerShell Script
+
 From the `deploy/powershell` folder, run the following command. This should provision all of the necessary infrastructure, deploy builds to the function apps, deploy the frontend, and deploy necessary artifacts to the Synapse workspace.
 
 ```pwsh
@@ -59,12 +74,12 @@ From the `deploy/powershell` folder, run the following command. This should prov
                      -subscription <subscription-id>
 ```
 
-### Cloud Shell Based Deployments
+### Cloud Shell-Based Deployments
 
 Create a cloud shell environment in a tenant that contains the target subscription.  Clone the repository and then execute the `CloudShell-Deploy.ps1` script as illustrated in the following snippet.  This will provision all of the required infrastructure and deploy the API and web app services into AKS.
 
 ```pwsh
-git clone --recurse-submodules https://github.com/hatboyzero/ClaimsProcessing.git
+git clone --recurse-submodules https://github.com/AzureCosmosDB/ClaimsProcessing.git
 cd ClaimsProcessing
 chmod +x ./deploy/powershell/*
 ./deploy/powershell/CloudShell-Deploy.ps1 -resourceGroup <rg-name> `
@@ -114,8 +129,10 @@ The following flags can be used to enable/disable specific deployment steps in t
 | Parameter Name | Description |
 |----------------|-------------|
 | stepDeployBicep | Enables or disables the provisioning of resources in Azure via Bicep templates (located in `./infrastructure`). Valid values are 0 (Disabled) and 1 (Enabled). See the `deploy/powershell/Deploy-Bicep.ps1` script.
-| stepPublishFunctionApp | Enables or disables the publish and zip deployment of the `CorePayments.FunctionApp` project to the regional function apps present in the target resource group. Valid values are 0 (Disabled) and 1 (Enabled). See the `deploy/infrastructure/Publish-FunctionApp.ps1` script.
-| stepDeployOpenAi | Enables or disables the provisioning of (or detection of an existing) Azure OpenAI service. If an explicit OpenAi resource group is not defined in the `openAiRg` parameter, the target resource group defaults to that passed in the `resourceGroup` parameter. Valid values are 0 (Disabled) and 1 (Enabled). See the `deploy/infrastructure/Deploy-OpenAi.ps1` script.
+| stepBuildPush | Enables or disables the build and push of Docker images into the Azure Container Registry (ACR). Valid values are 0 (Disabled) and 1 (Enabled). See the `deploy/infrastructure/BuildPush.ps1` script.
+| stepDeployCertManager | Enables or disables adding the official cert-manager repository to your local and updates the repo cache. Valid values are 0 (Disabled) and 1 (Enabled). See the `deploy/infrastructure/DeployCertManager.ps1` script.
+| stepDeployTls | Enables or disables SSL/TLS support on the AKS cluster in the resource group. Valid values are 0 (Disabled) and 1 (Enabled). See the `deploy/infrastructure/DeployTlsSupport.ps1` script.
+| stepDeployImages | Enables or disables deploying the Docker images from the `CoreClaims.WebAPI` and `CoreClaims.WorkerService` projects to AKS. Valid values are 0 (Disabled) and 1 (Enabled). See the `deploy/infrastructure/Deploy-Images-Aks.ps1` script.
 | stepPublishSite | Enables or disables the build and deployment of the static HTML site to the hosting storage account in the target resource group. Valid values are 0 (Disabled) and 1 (Enabled). See the `deploy/infrastructure/Publish-Site.ps1` script.
 | stepSetupSynapse | Enables or disables the deployment of a Synapse artifacts to the target synapse workspace. Valid values are 0 (Disabled) and 1 (Enabled). See the `deploy/infrastructure/Setup-Synapse.ps1` script.
 | stepLoginAzure | Enables or disables interactive Azure login. If disabled, the deployment assumes that the current Azure CLI session is valid. Valid values are 0 (Disabled). 
@@ -147,11 +164,11 @@ cd deploy/powershell
  
 > 
 > Resources created:
-> - Resource group
+> - Resource Group
 > - Azure Blob Storage (ADLS Gen2)
 > - Azure Cosmos DB account (1 database with 1000 RUs autoscale shared with 4 collections, and 3 containers with dedicated RUs) with Analytical Store enabled
 > - Azure Event Hub standard
-> - Azure Functions Consumption Plan
+> - Azure Kubernetes Service (AKS)
 > - Azure Application Insights
 > - Azure OpenAI
 > - Synapse Workspace (public access enabled)
@@ -163,17 +180,17 @@ cd deploy/powershell
 >   - Azure Blob Storage
 >   - Azure Cosmos DB
 > - Source/Sink datasets for the ingestion process
-> - Pipeline for ingesting Synthea output into Cosmos Db Containers
+> - Pipeline for ingesting sample data into Cosmos DB Containers
 
 ## Ingest Sample Data
 
-This will require logging into the azure portal, and accessing the Synapse workspace.
+This will require logging into the Azure portal and accessing the Synapse workspace.
 
 1. Log into the Synapse workspace in Synapse Studio
 2. Locate the **Initial-Ingestion** pipeline in the **Integrate** section in the side menu
-3. Click the **Add trigger -> Trigger now** button to run the pipeline
+3. Select **Add trigger -> Trigger now** to run the pipeline
 
-> The pipeline execution should take about 5 minutes to complete.  You can monitor the progress of the pipeline by clicking on the **Monitor** section in the side menu and selecting the **Pipeline runs** tab.
+> The pipeline execution should take about 5 minutes to complete. You can monitor the progress of the pipeline by selecting the **Monitor** section in the side menu and selecting the **Pipeline runs** tab.
 
 ## Running the sample
 
