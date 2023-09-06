@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import react, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import Moment from 'moment';
+import moment from 'moment';
 import TransactionsStatement from '../../hooks/TransactionsStatement';
 import { FormatMoney } from '../../hooks/Formatters';
 
@@ -30,8 +30,8 @@ export default function ClaimDetails({ claimId, requestClaims, isManager, setCha
 		<>
 			<div className="card shadow-md">
 				<div className="card-header grid grid-cols-2">
-					<h4 className="card-title">Claim Details</h4>
-					<div className='text-right'><label>Filing Date: </label>{ Moment(data.filingDate).format('MMMM DD, YYYY') }</div>
+					<h4 className="card-title mb-2">Claim Details</h4>
+					<div className='text-right'><label>Filing Date: </label>{ moment(data.filingDate).format('MMMM DD, YYYY') }</div>
 					<div className="justify-end">
 						<Button color="dark" className="p-0" onClick={onClickRecommend}>
 							<SparklesIcon className="h-6 w-6 text-gray-500 mr-3 text-white" />
@@ -41,16 +41,14 @@ export default function ClaimDetails({ claimId, requestClaims, isManager, setCha
 				</div>
 				<div className="card-body">
 					<div className="relative overflow-x-auto sm:rounded">
-						<div className='grid grid-cols-2 w-9/12'>
+						<div className='grid grid-cols-[auto_1fr] gap-x-8'>
 							<div className='px-4 font-bold gap-2'>Claim Id:</div>
 							<div className='float-left'>{data.claimId}</div>
 							<div className='px-4 font-bold gap-2'>Member Id:</div>
 							<div className='float-left'>{data.memberId}</div>
 							<div className='px-4 font-bold gap-2'>Claim Status:</div>
 							<div>
-								<div>
-									<span className="bg-yellow-100">{data.claimStatus}</span>
-								</div>
+								<span className="bg-yellow-100">{data.claimStatus}</span>
 								<ClaimsActions claimStatus={data.claimStatus} claimId={data.claimId} {...{data, requestClaims, lineItems, mutate, setChangeDetail}}/>
 							</div>
 							<div className='px-4 font-bold gap-2'>Payer Name:</div>
@@ -169,7 +167,7 @@ function ClaimsActions({claimStatus, claimId, requestClaims, lineItems, mutate, 
 function formatValues(header, value, row) {
 	switch(header.key) {
 		case 'serviceDate':
-			return Moment(value).format('YYYY-MM-DD');
+			return moment(value).format('YYYY-MM-DD');
 			break;
 		case 'amount':
 		case 'discount':
@@ -181,7 +179,8 @@ function formatValues(header, value, row) {
 }
 
 const ableApplyDiscount = (claimStatus) => {
-	if (claimStatus.toLowerCase() == 'denied' || claimStatus.toLowerCase() == 'approved') {
+	const status = claimStatus.toLowerCase();
+	if (status == 'denied' || status == 'approved' || status == 'assigned') {
 		return false;
 	} else {
 		return true;
@@ -224,7 +223,7 @@ function LineItemsTable({ data, setLineItems, isManager, claimStatus }) {
 }
 
 
-const ApplyDiscount = ({row, data, setLineItems}) => {
+const ApplyDiscount = ({ row, data, setLineItems }) => {
 	const [ openModal, setOpenModal ] = useState(false);
 	const [ discountValue, setDiscountValue ] = useState(0);
 	const dicountRef = useRef(0);
@@ -238,7 +237,7 @@ const ApplyDiscount = ({row, data, setLineItems}) => {
 	}
 
 	const onChange = (e) => {
-		dicountRef.current = e.target.value;
+		dicountRef.current = Math.abs(e.target.value);
 	}
 
 	return (
@@ -248,9 +247,9 @@ const ApplyDiscount = ({row, data, setLineItems}) => {
 				className='justify-center items-center flex overflow-x-hidden overflow-y-auto 
 				fixed inset-0 z-50 outline-none focus:outline-none'
 			>
-				<Modal.Header className="items-center">Apply Discount</Modal.Header>
+				<Modal.Header className="items-center p-4">Apply Discount</Modal.Header>
 				<Modal.Body className='mt-10'>
-					<input type="number" ref={dicountRef} onChange={(e)=>onChange(e)}
+					<input type="number" min="0" ref={dicountRef} onChange={(e)=>onChange(e)}
 						className='shadow appearance-none border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline' />
 				</Modal.Body>
 				<Modal.Footer>

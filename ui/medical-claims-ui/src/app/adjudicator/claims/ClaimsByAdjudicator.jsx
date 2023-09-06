@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
+import link from 'next/link';
 import { Table, Pagination, Spinner } from 'flowbite-react';
-import Moment from 'moment';
+import moment from 'moment';
 
 import TransactionsStatement from '../../hooks/TransactionsStatement';
 import { FormatMoney } from '../../hooks/Formatters';
@@ -14,8 +14,8 @@ import DataTable from '../../components/DataTable';
 const tableHeaders = [
 	{ key: 'filingDate', name: 'Filing Date' },
 	{ key: 'claimId', name: 'Claim ID' },
-	{ key: 'claimStatus', name: 'Claim Status' },
-	{ key: 'payerName', name: 'Payer' },
+	{ key: 'claimStatus', name: 'Claim Status', cellStyle: { backgroundColor: 'rgb(253, 248, 170)' } },
+	{ key: 'providerName', name: 'Provider' },
 	{ key: 'lastAdjudicatedDate', name: 'Last Adjudicated Date' },
 	{ key: 'lastAmount', name: 'Last Amount' },
 	{ key: 'totalAmount', name: 'Total Amount' }
@@ -24,10 +24,10 @@ const tableHeaders = [
 function formatValues(header, value, row) {
 	switch(header.key) {
 		case 'filingDate':
-			return Moment(value).format('YYYY-MM-DD');
+			return moment(value).format('YYYY-MM-DD');
 			break;		
 		case 'lastAdjudicatedDate':
-			return value ? Moment(value).format('YYYY-MM-DD hh:mm a') : '-';
+			return value ? moment(value).format('YYYY-MM-DD hh:mm a') : '-';
 			break;
 		case 'lastAmount':
 			return FormatMoney(value);
@@ -63,6 +63,12 @@ export default function ClaimsByAdjudicator({ adjudicatorId, isManager }) {
 		setShowClaimDetail(false);
 	}
 
+	const onPageChange = (newPage) => {
+		setShowClaimDetail(false);
+		setShowHistory(false);
+		setPage(newPage);
+	}
+
 	useEffect(() => {
 		if (changeDetail) {
 			requestClaims.mutate();
@@ -74,22 +80,20 @@ export default function ClaimsByAdjudicator({ adjudicatorId, isManager }) {
 		<>
 			<div className="card mb-10 shadow-md">
 				<div className="card-header">
-					<h4 className="card-title">Claims</h4>
+					<h4 className="card-title">Claims Assigned to { isManager ? 'Manager' : 'Adjudicator' }</h4>
 				</div>
 				<div className="card-body">
 					<div className="relative overflow-x-auto sm:rounded">
 						<DataTable
 							isLoading={requestClaims.isLoading}
 							headers={tableHeaders}
-							// ! This becomes null/undefined on claim proposal
 							data={requestClaims.data?.items}
 							pagination={true}
 							page={page}
 							totalPages={requestClaims.data?.totalPages}
-							onPageChange={(newPage) => setPage(newPage)}
+							onPageChange={(newPage) => onPageChange(newPage)}
 							sortEnabled={true}
 							onSortChange={(sort) => setSort(sort)}
-							rowFormatter={formatValues}
 							rowFormatter={formatValues}
 							extraHeaders={
 								<>

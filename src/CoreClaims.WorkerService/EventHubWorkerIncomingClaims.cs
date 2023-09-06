@@ -1,56 +1,52 @@
-using System;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
-using Azure.Messaging.EventHubs;
 using CoreClaims.Infrastructure;
-using Microsoft.Extensions.Logging;
 using CoreClaims.Infrastructure.Domain.Entities;
 using CoreClaims.Infrastructure.Domain.Enums;
-using CoreClaims.Infrastructure.Repository;
-using CoreClaims.Infrastructure.Helpers;
-using Microsoft.Azure.Functions.Worker;
-using Azure.Messaging.EventHubs.Producer;
 using CoreClaims.Infrastructure.Events;
-using CoreClaims.FunctionApp.HttpTriggers.Claims;
+using CoreClaims.Infrastructure.Helpers;
+using CoreClaims.Infrastructure.Repository;
 
-namespace CoreClaims.FunctionApp.EventHubTriggers
+namespace CoreClaims.WorkerService
 {
-    public class CreateClaim
+    public class EventHubWorkerIncomingClaims : BackgroundService
     {
+        private readonly ILogger<EventHubWorkerIncomingClaims> _logger;
+        private readonly IEventHubService _eventHub;
         private readonly IClaimRepository _claimRepository;
         private readonly IProviderRepository _providerRepository;
         private readonly IPayerRepository _payerRepository;
-        private readonly IEventHubService _eventHub;
 
-        public CreateClaim(
-            IClaimRepository claimRepository, 
-            IProviderRepository providerRepository, 
-            IPayerRepository payerRepository,
-            IEventHubService eventHub)
+        public EventHubWorkerIncomingClaims(ILogger<EventHubWorkerIncomingClaims> logger,
+            IEventHubService eventHub,
+            IClaimRepository claimRepository,
+            IProviderRepository providerRepository,
+            IPayerRepository payerRepository)
         {
+            _logger = logger;
+            _eventHub = eventHub;
             _claimRepository = claimRepository;
             _providerRepository = providerRepository;
             _payerRepository = payerRepository;
-            _eventHub = eventHub;
         }
 
-        [Function("CreateClaim")]
-        public async Task Run(
-            [EventHubTrigger(Constants.EventHubTopics.Incoming,
-                Connection = Constants.Connections.EventHub,
-                IsBatched = false)]
-            string messageBody,
-            FunctionContext context)
+        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            var logger = context.GetLogger<CreateClaim>();
-            using var logScope = logger.BeginScope("EventHubTrigger: CreateClaim");
+            _logger.LogInformation("{time}: Starting the EventHubWorkerIncomingClaims", DateTimeOffset.Now);
+            await foreach (var partitionEvent in _eventHub.ReadEvents(Constants.EventHubTopics.Incoming, stoppingToken))
+            {
+                var messageBody = Encoding.UTF8.GetString(partitionEvent.Data.EventBody.ToArray());
+                await ProcessIncomingClaim(messageBody);
+            }
+        }
+
+        protected async Task ProcessIncomingClaim(string messageBody)
+        {
+            using var logScope = _logger.BeginScope("EventHubTrigger: CreateClaim");
 
             try
             {
-                //var messageBody = Encoding.UTF8.GetString(incoming.EventBody.ToArray());
                 var detail = JsonSerializationHelper.DeserializeItem<ClaimDetail>(messageBody);
-
+                _logger.LogInformation($"Processing Create Claim/{detail.ClaimId}");
                 var existingClaim = await _claimRepository.GetClaim(detail.ClaimId);
 
                 var provider = string.IsNullOrEmpty(detail.ProviderId) ? null : await _providerRepository.GetProvider(detail.ProviderId);
@@ -61,7 +57,7 @@ namespace CoreClaims.FunctionApp.EventHubTriggers
                     if (detail.ClaimStatus != ClaimStatus.Resubmitted)
                     {
                         await _eventHub.TriggerEventAsync(detail, Constants.EventHubTopics.Rejected);
-                        logger.LogInformation($"Rejecting duplicate create Claim/{detail.ClaimId}");
+                        _logger.LogInformation($"Rejecting duplicate create Claim/{detail.ClaimId}");
                         return;
                     }
 
@@ -83,7 +79,7 @@ namespace CoreClaims.FunctionApp.EventHubTriggers
                     if (detail.ClaimStatus == ClaimStatus.Resubmitted)
                     {
                         await _eventHub.TriggerEventAsync(detail, Constants.EventHubTopics.Rejected);
-                        logger.LogInformation($"Rejecting non-existent update Claim/{detail.ClaimId}");
+                        _logger.LogInformation($"Rejecting non-existent update Claim/{detail.ClaimId}");
                         return;
                     }
 
@@ -102,7 +98,7 @@ namespace CoreClaims.FunctionApp.EventHubTriggers
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Failed to handle Create Claim event");
+                _logger.LogError(ex, "Failed to handle Create Claim event");
                 throw;
             }
         }

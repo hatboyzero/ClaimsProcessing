@@ -73,14 +73,15 @@ module synapse 'synapse.bicep' = {
 
 module openAi 'openai.bicep' = {
   name: 'openAiDeploy'
+  scope: resourceGroup() // Deployments with existing OpenAi (different resource group) will have to be properly adjust this
   params: {
     openAiName: serviceNames.openAi
     location: location
     deployments: [
       {
         name: openAiDeployment
-        model: 'text-embedding-ada-002'
-        version: '2'
+        model: 'gpt-35-turbo'
+        version: '0301'
         sku: {
           name: 'Standard'
           capacity: 60

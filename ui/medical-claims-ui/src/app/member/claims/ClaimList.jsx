@@ -1,6 +1,6 @@
 
-import { useState } from 'react';
-import Link from 'next/link';
+import { useState, useEffect } from 'react';
+import link from 'next/link';
 import moment from 'moment';
 
 import { Table } from 'flowbite-react';
@@ -13,7 +13,7 @@ import DataTable from '../../components/DataTable';
 
 const tableHeaders = [
 	{ key: 'filingDate', name: 'Filing Date' },
-	{ key: 'claimStatus', name: 'Claim Status', itemStyle: { backgroundColor: 'rgb(253, 248, 170)' } },
+	{ key: 'claimStatus', name: 'Claim Status', cellStyle: { backgroundColor: 'rgb(253, 248, 170)' } },
 	{ key: 'providerName', name: 'Provider' },
 	{ key: 'lastAdjudicatedDate', name: 'Last Adjucated Date' },
 	{ key: 'lastAmount', name: 'Last Amout' },
@@ -50,17 +50,21 @@ export default function ClaimList({ memberId }) {
 	const [ showClaimDetail, setShowClaimDetail ] = useState(false);
 	const [ showHistory, setShowHistory ] = useState(false);
 
-	const viewDetails = (newClaimId)=> {
+	const viewDetails = (newClaimId) => {
 		setClaimId(newClaimId);
 		setShowClaimDetail(true);
 		setShowHistory(false);
 	}
 
-	const viewHistory = (newClaimId)=> {
+	const viewHistory = (newClaimId) => {
 		setClaimId(newClaimId);
 		setShowHistory(true);
 		setShowClaimDetail(false);
 	}
+
+	useEffect(() => {
+		setShowHistory(false);
+	}, [memberId]);
 
 	return (
 		<>
